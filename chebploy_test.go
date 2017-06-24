@@ -146,3 +146,36 @@ func TestCumsum(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+//Benchmarks
+
+var result float64;
+
+func BenchmarkChebpts(b *testing.B){
+	for i := 0; i < b.N; i++{
+		Chebpts(100,-1,1)
+	}
+}
+
+func BenchmarkInterp(b *testing.B){
+	points := Chebpts(100, -1, 1)
+	for i, v := range points {
+		points[i] = math.Sin(100 * v)
+	}
+	b.ResetTimer()
+	for i :=0; i < b.N; i++{
+		Interp(points, -1, 1)
+	}
+}
+
+func BenchmarkEvaluate(b *testing.B){
+	for i := 0; i < b.N; i++{
+		s100.Evaluate(0.6)
+	}
+}
+
+func BenchmarkCumsum(b *testing.B){
+	for i := 0; i < b.N; i++{
+		s100.Cumsum()
+	}
+}
