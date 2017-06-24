@@ -109,3 +109,11 @@ func (poly Chebpoly) Cumsum() Chebpoly {
 	integral.Coeffs[0] = b0
 	return integral
 }
+
+func (poly Chebpoly) Sum() float64 {
+	sum := 0.0
+	for i := 0; i < poly.Length(); i += 2 {
+		sum += -poly.Coeffs[i] * 2 / float64(i*i-1)
+	}
+	return sum * (poly.DomainUpper - poly.DomainLower) / 2
+}

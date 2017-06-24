@@ -13,6 +13,8 @@ var s100Cumsum Chebpoly = Chebpoly{Coeffs: []float64{0.008423812166895, 0, -0.00
 var t4 Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 0, 1}, DomainLower: -1, DomainUpper: 1}
 var t4Cumsum Chebpoly = Chebpoly{Coeffs: []float64{-1.0 / 15, 0, 0, -1.0 / 6, 0, 1.0 / 10}, DomainLower: -1, DomainUpper: 1}
 
+var t4Scaled Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 0, 1}, DomainLower: 0.5, DomainUpper: 2}
+
 var t5 Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 0, 0, 1}, DomainLower: -1, DomainUpper: 1}
 
 var t5Scaled Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 0, 0, 1}, DomainLower: 0.5, DomainUpper: 2}
@@ -147,35 +149,54 @@ func TestCumsum(t *testing.T) {
 	}
 }
 
-//Benchmarks
+func TestSum(t *testing.T) {
+	if math.Abs(t4.Sum()+2.0/15) > tol {
+		t.FailNow()
+	}
 
-var result float64;
-
-func BenchmarkChebpts(b *testing.B){
-	for i := 0; i < b.N; i++{
-		Chebpts(100,-1,1)
+	if math.Abs(t5.Sum()) > tol {
+		t.FailNow()
+	}
+	if math.Abs(t4Scaled.Sum()+1.0/10) > tol {
+		t.FailNow()
 	}
 }
 
-func BenchmarkInterp(b *testing.B){
+//Benchmarks
+
+var result float64
+
+func BenchmarkChebpts(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Chebpts(100, -1, 1)
+	}
+}
+
+func BenchmarkInterp(b *testing.B) {
 	points := Chebpts(100, -1, 1)
 	for i, v := range points {
 		points[i] = math.Sin(100 * v)
 	}
 	b.ResetTimer()
-	for i :=0; i < b.N; i++{
+	for i := 0; i < b.N; i++ {
 		Interp(points, -1, 1)
 	}
 }
 
-func BenchmarkEvaluate(b *testing.B){
-	for i := 0; i < b.N; i++{
+func BenchmarkEvaluate(b *testing.B) {
+	for i := 0; i < b.N; i++ {
 		s100.Evaluate(0.6)
 	}
 }
 
-func BenchmarkCumsum(b *testing.B){
-	for i := 0; i < b.N; i++{
+func BenchmarkCumsum(b *testing.B) {
+	for i := 0; i < b.N; i++ {
 		s100.Cumsum()
+	}
+}
+
+func BenchmarkSum(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		s100.Sum()
 	}
 }
