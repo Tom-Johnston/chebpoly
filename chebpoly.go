@@ -78,3 +78,34 @@ func (poly Chebpoly) Evaluate(x float64) float64 {
 		return poly.Coeffs[0] + scaledX*bk1 - bk2
 	}
 }
+
+//Cumsum returns the Chebpoly of the indefinite integral.
+//The constant of integration is taken so that Cumsum(DomainLower) = 0
+func (poly Chebpoly) Cumsum() Chebpoly {
+	n := poly.Length()
+	integral := Chebpoly{DomainLower: poly.DomainLower, DomainUpper: poly.DomainUpper}
+	integral.Coeffs = make([]float64, poly.Length()+1)
+	scaleFactor := (poly.DomainUpper - poly.DomainLower) / 2 //Multiply all the coefficients by this factor to account for the change of variables in the integral.
+	b0 := 0.0                                                //This will be the zero coefficient of the integrand
+	integral.Coeffs[1] = scaleFactor * (poly.Coeffs[0] - poly.Coeffs[2]/2)
+	b0 += integral.Coeffs[1]
+	for i := 2; i < n-1; i++ {
+		integral.Coeffs[i] = scaleFactor * (poly.Coeffs[i-1] - poly.Coeffs[i+1]) / (2 * float64(i))
+		if (i % 2) == 0 {
+			b0 -= integral.Coeffs[i]
+		} else {
+			b0 += integral.Coeffs[i]
+		}
+	}
+	integral.Coeffs[n-1] = scaleFactor * poly.Coeffs[n-2] / (2 * float64(n-1))
+	integral.Coeffs[n] = scaleFactor * poly.Coeffs[n-1] / (2 * float64(n))
+	if (n % 2) == 1 {
+		b0 -= integral.Coeffs[n-1]
+		b0 += integral.Coeffs[n]
+	} else {
+		b0 += integral.Coeffs[n-1]
+		b0 -= integral.Coeffs[n]
+	}
+	integral.Coeffs[0] = b0
+	return integral
+}
