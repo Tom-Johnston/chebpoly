@@ -30,7 +30,7 @@ func floatArraysNearlyEqual(array1, array2 []float64) (bool, string) {
 	}
 	for i, v := range array1 {
 		if math.Abs(v-array2[i]) > tol {
-			return false, fmt.Sprintf("Values don't match - Array1 %f Array2 %f Difference: %f", v, array2[i], math.Abs(v-array2[i]))
+			return false, fmt.Sprintf("Values don't match in position %d - Array1 %f Array2 %f Difference: %g", i, v, array2[i], math.Abs(v-array2[i]))
 		}
 	}
 	return true, ""
@@ -162,6 +162,27 @@ func TestSum(t *testing.T) {
 	}
 }
 
+func TestDiff(t *testing.T) {
+	b, err := chebpolysNearlyEqual(t4Cumsum.Diff(), t4)
+	if !b {
+		t.Log("T4")
+		t.Error(err)
+	}
+
+	b, err = chebpolysNearlyEqual(t5ScaledCumsum.Diff(), t5Scaled)
+	if !b {
+		t.Log("T5")
+		t.Error(err)
+	}
+
+	//Note that differentiating s100Cumsum doesn't give s100 but this is likely due to errors in the terms of s100Cumsum. Indeed, pasting these values into chebfun the difference in the derivative's coefficients is about 2.2e-14.
+	b, err = chebpolysNearlyEqual(s100.Cumsum().Diff(), s100)
+	if !b {
+		t.Log("s100")
+		t.Error(err)
+	}
+}
+
 //Benchmarks
 
 var result float64
@@ -198,5 +219,11 @@ func BenchmarkCumsum(b *testing.B) {
 func BenchmarkSum(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		s100.Sum()
+	}
+}
+
+func BenchmarkDiff(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		s100.Diff()
 	}
 }

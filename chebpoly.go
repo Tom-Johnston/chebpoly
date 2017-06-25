@@ -117,3 +117,17 @@ func (poly Chebpoly) Sum() float64 {
 	}
 	return sum * (poly.DomainUpper - poly.DomainLower) / 2
 }
+
+func (poly Chebpoly) Diff() Chebpoly {
+	n := poly.Length()
+	derivative := Chebpoly{DomainLower: poly.DomainLower, DomainUpper: poly.DomainUpper}
+	derivative.Coeffs = make([]float64, n-1)
+	scaleFactor := 2 / (poly.DomainUpper - poly.DomainLower)
+	derivative.Coeffs[n-2] = scaleFactor * 2 * float64(n-1) * poly.Coeffs[n-1]
+	derivative.Coeffs[n-3] = scaleFactor * 2 * float64(n-2) * poly.Coeffs[n-2]
+	for i := n - 4; i > 0; i-- {
+		derivative.Coeffs[i] = derivative.Coeffs[i+2] + scaleFactor*2*float64(i+1)*poly.Coeffs[i+1]
+	}
+	derivative.Coeffs[0] = derivative.Coeffs[2]/2 + scaleFactor*poly.Coeffs[1]
+	return derivative
+}
