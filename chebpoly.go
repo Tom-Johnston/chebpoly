@@ -112,6 +112,7 @@ func (poly Chebpoly) Cumsum() Chebpoly {
 	return integral
 }
 
+//Sum returns the integral of the Chebpoly over the domain.
 func (poly Chebpoly) Sum() float64 {
 	sum := 0.0
 	for i := 0; i < poly.Length(); i += 2 {
@@ -120,17 +121,22 @@ func (poly Chebpoly) Sum() float64 {
 	return sum * (poly.DomainUpper - poly.DomainLower) / 2
 }
 
+//Diff returns the Chebpoly representing the derivative of the given Chebpoly
 func (poly Chebpoly) Diff() Chebpoly {
 	n := poly.Length()
 	derivative := Chebpoly{DomainLower: poly.DomainLower, DomainUpper: poly.DomainUpper}
-	derivative.Coeffs = make([]float64, n-1)
-	scaleFactor := 2 / (poly.DomainUpper - poly.DomainLower)
-	derivative.Coeffs[n-2] = scaleFactor * 2 * float64(n-1) * poly.Coeffs[n-1]
-	derivative.Coeffs[n-3] = scaleFactor * 2 * float64(n-2) * poly.Coeffs[n-2]
-	for i := n - 4; i > 0; i-- {
-		derivative.Coeffs[i] = derivative.Coeffs[i+2] + scaleFactor*2*float64(i+1)*poly.Coeffs[i+1]
+	if n == 1{
+		//poly is a constant so derivative is 0.
+		derivative.Coeffs = make([]float64, 1)
+		return derivative
 	}
-	derivative.Coeffs[0] = derivative.Coeffs[2]/2 + scaleFactor*poly.Coeffs[1]
+	coeffs := make([]float64, n + 1) //We will add a couple of extra zero entries here to make the code simpler. Note that these entries will probably always be in memory but this is not really a problem.
+	scaleFactor := 2 / (poly.DomainUpper - poly.DomainLower)
+	for i := n - 2; i > 0; i-- {
+		coeffs[i] = coeffs[i+2] + scaleFactor*2*float64(i+1)*poly.Coeffs[i+1]
+	}
+	coeffs[0] = coeffs[2]/2 + scaleFactor*poly.Coeffs[1]
+	derivative.Coeffs = coeffs[:n-1]
 	return derivative
 }
 
