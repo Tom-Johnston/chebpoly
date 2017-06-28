@@ -140,6 +140,8 @@ func (poly Chebpoly) Diff() Chebpoly {
 	return derivative
 }
 
+//Roots returns all the real roots of the Chebpoly in [-1,1]
+//This could be extended to provide all the roots of the Chebpoly but it isn't.
 func (poly Chebpoly) Roots() []float64 {
 
 	roots := poly.getApproximateRoots()
@@ -148,6 +150,7 @@ func (poly Chebpoly) Roots() []float64 {
 	return roots
 }
 
+//This finds the roots in the [-1,1] but they may not be perfectly accurate.
 func (poly Chebpoly) getApproximateRoots() []float64 {
 	n := poly.Length()
 
@@ -158,11 +161,11 @@ func (poly Chebpoly) getApproximateRoots() []float64 {
 	for _, v := range poly.Coeffs {
 		norm += math.Abs(v)
 	}
-	cutoffValue := 1e-13*norm + 1e-15
+	cutoffValue := 1e-13*norm;
 	cutOffPoint := 1
 	//Iterate back through the coefficients to find the first point that we
 	for i := 0; i < n-1; i++ {
-		if math.Abs(poly.Coeffs[n-1-i]) >= cutoffValue {
+		if math.Abs(poly.Coeffs[n-1-i]) > cutoffValue {
 			cutOffPoint = n - i
 			break
 		}
@@ -237,10 +240,26 @@ func (poly Chebpoly) getApproximateRoots() []float64 {
 		polyRight := Interp(valuesRight, scaledSplitPoint, poly.DomainUpper)
 
 		return append(polyLeft.getApproximateRoots(), polyRight.getApproximateRoots()...)
-
 	}
 }
 
 func (poly Chebpoly) refineRoots(roots []float64) []float64 {
+	const maxIterations = 10;
+
+	derivative := poly.Diff();
+
+	for i, v := range roots{
+		for i := 0; i < maxIterations; i++{
+			if derivative.Evaluate(v) != 0 {
+				change := poly.Evaluate(v)/derivative.Evaluate(v);
+				if math.Abs(change) > 1e-15{
+					v = v - change;
+				}else{
+					break;
+				}
+			}
+		}
+		roots[i] = v;
+	}
 	return roots
 }
