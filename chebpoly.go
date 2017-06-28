@@ -2,7 +2,9 @@ package chebpoly
 
 import "math"
 import "github.com/mjibson/go-dsp/fft"
+import "github.com/gonum/matrix/mat64"
 import "fmt"
+import "sort"
 
 //Chebpts(n, dl, du) gives the n CHebyshev points of the second kind suitably scaled to the domain [dl,du]
 func Chebpts(n uint, domainLower float64, domainUpper float64) []float64 {
@@ -130,4 +132,109 @@ func (poly Chebpoly) Diff() Chebpoly {
 	}
 	derivative.Coeffs[0] = derivative.Coeffs[2]/2 + scaleFactor*poly.Coeffs[1]
 	return derivative
+}
+
+func (poly Chebpoly) Roots() []float64 {
+
+	roots := poly.getApproximateRoots()
+	roots = poly.refineRoots(roots)
+	sort.Float64s(roots)
+	return roots
+}
+
+func (poly Chebpoly) getApproximateRoots() []float64 {
+	n := poly.Length()
+
+	//Truncate the series. We are only after the roots approximately anyway.
+
+	//Calculate the 1 norm
+	norm := 0.0
+	for _, v := range poly.Coeffs {
+		norm += math.Abs(v)
+	}
+	cutoffValue := 1e-13*norm + 1e-15
+	cutOffPoint := 1
+	//Iterate back through the coefficients to find the first point that we
+	for i := 0; i < n-1; i++ {
+		if math.Abs(poly.Coeffs[n-1-i]) >= cutoffValue {
+			cutOffPoint = n - i
+			break
+		}
+	}
+
+	coeffs := poly.Coeffs[:cutOffPoint]
+	n = len(coeffs)
+	//We will find the roots by solving the Colleague matrix eigenvalue problem if it is at most maxEigProbSize else we will split the interval in 2 and try again.
+
+	const maxEigProbSize = 50 //Note that making this too small can cause problems as the splitting can reach intervals of lenth around machine precision.
+
+	const complexTolerance = 1e-14
+	const realTolerance = 1e-14
+
+	if n == 1 && coeffs[0] != 0 {
+		return []float64{}
+	}
+	if n == 1 {
+		// We will return the middle of the domain like chebfun...
+		fmt.Println("Warning: Finding roots of the 0 polynomial")
+		return []float64{(poly.DomainLower + poly.DomainUpper) / 2}
+	}
+	if n == 2 {
+		root := -coeffs[0] / coeffs[1]
+		if math.Abs(root) <= 1+realTolerance {
+			return []float64{(1+root)*(poly.DomainUpper-poly.DomainLower)/2 + poly.DomainLower}
+		} else {
+			return []float64{}
+		}
+	}
+	if n <= maxEigProbSize {
+		roots := make([]float64, 0, n-1)
+		a := make([]float64, (n-1)*(n-1))
+		a[1] = 1
+		for i := 1; i < n-2; i++ {
+			a[i*(n-1)+i-1] = 0.5
+			a[i*(n-1)+i+1] = 0.5
+		}
+		for i := 0; i < n-1; i++ {
+			a[(n-1)*(n-2)+i] = -coeffs[i] / (2 * coeffs[n-1])
+		}
+		a[(n-1)*(n-1)-2] = -coeffs[n-3]/(2*coeffs[n-1]) + 0.5
+		A := mat64.NewDense(n-1, n-1, a)
+		var eigen mat64.Eigen
+		eigen.Factorize(A, false, false)
+		eigenValues := make([]complex128, n-1)
+		eigen.Values(eigenValues)
+
+		for _, v := range eigenValues {
+			if math.Abs(imag(v)) < complexTolerance && math.Abs(real(v)) <= 1+realTolerance {
+				scaledV := (1+real(v))*(poly.DomainUpper-poly.DomainLower)/2 + poly.DomainLower
+				roots = append(roots, scaledV)
+			}
+		}
+		return roots
+	} else {
+		//Split
+		const splitPoint = -0.004849834917525 // This is an arbitrary number copied from Chefun.
+
+		scaledSplitPoint := (1+splitPoint)*(poly.DomainUpper-poly.DomainLower)/2 + poly.DomainLower
+
+		valuesLeft := make([]float64, n)
+		for i, v := range Chebpts(uint(n), poly.DomainLower, scaledSplitPoint) {
+			valuesLeft[i] = poly.Evaluate(v)
+		}
+		valuesRight := make([]float64, n)
+		for i, v := range Chebpts(uint(n), scaledSplitPoint, poly.DomainUpper) {
+			valuesRight[i] = poly.Evaluate(v)
+		}
+
+		polyLeft := Interp(valuesLeft, poly.DomainLower, scaledSplitPoint)
+		polyRight := Interp(valuesRight, scaledSplitPoint, poly.DomainUpper)
+
+		return append(polyLeft.getApproximateRoots(), polyRight.getApproximateRoots()...)
+
+	}
+}
+
+func (poly Chebpoly) refineRoots(roots []float64) []float64 {
+	return roots
 }

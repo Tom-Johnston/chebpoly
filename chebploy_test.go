@@ -26,7 +26,7 @@ var extendedt3t5 Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 1, 0, 1, 0, 0, 0
 
 func floatArraysNearlyEqual(array1, array2 []float64) (bool, string) {
 	if len(array1) != len(array2) {
-		return false, "len doesn't match"
+		return false, fmt.Sprintf("len doesn't match - Array1: %d Array2: %d", len(array1), len(array2))
 	}
 	for i, v := range array1 {
 		if math.Abs(v-array2[i]) > tol {
@@ -183,6 +183,60 @@ func TestDiff(t *testing.T) {
 	}
 }
 
+func TestRoots(t *testing.T) {
+	poly := Chebpoly{DomainLower: -1, DomainUpper: 1, Coeffs: []float64{0}}
+	correctResult := []float64{0}
+	b, err := floatArraysNearlyEqual(poly.Roots(), correctResult)
+	if !b {
+		t.Error(err)
+	}
+
+	poly = Chebpoly{DomainLower: -1, DomainUpper: 1, Coeffs: []float64{2.4}}
+	correctResult = []float64{}
+	b, err = floatArraysNearlyEqual(poly.Roots(), correctResult)
+	if !b {
+		t.Error(err)
+	}
+
+	poly = Chebpoly{DomainLower: -1, DomainUpper: 1, Coeffs: []float64{0, 1}}
+	correctResult = []float64{0}
+	b, err = floatArraysNearlyEqual(poly.Roots(), correctResult)
+	if !b {
+		t.Error(err)
+	}
+
+	poly = Chebpoly{DomainLower: -1, DomainUpper: 1, Coeffs: []float64{2, 1}}
+	correctResult = []float64{}
+	b, err = floatArraysNearlyEqual(poly.Roots(), correctResult)
+	if !b {
+		t.Error(err)
+	}
+
+	correctResult = []float64{math.Cos(4*math.Pi/5 + math.Pi/10), math.Cos(3*math.Pi/5 + math.Pi/10), 0, math.Cos(1*math.Pi/5 + math.Pi/10), math.Cos(math.Pi / 10)}
+	b, err = floatArraysNearlyEqual(t5.Roots(), correctResult)
+	if !b {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	correctResult = []float64{0.536707612778635, 0.809161060780646, 1.25, 1.690838939219355, 1.963292387221366}
+	b, err = floatArraysNearlyEqual(t5Scaled.Roots(), correctResult)
+	if !b {
+		t.Log(err)
+		t.FailNow()
+	}
+
+	t.Log("s100")
+	correctResult = []float64{-0.973476537473530, -0.941963922846026, -0.909997630679600, -0.880898165476357, -0.846951011003893, -0.818161004985501, -0.785125636034162, -0.752213060303187, -0.722848191200046, -0.693342479264069, -0.661825115146115, -0.627104608999527, -0.593792976919849, -0.562609279390930, -0.532149578262066, -0.501865177209623, -0.471554903526460, -0.441138543138549, -0.410583514910297, -0.379877544362281, -0.349016870625636, -0.318000644447448, -0.286828379638309, -0.255499328351622, -0.224013236948676, -0.192371973822785, -0.160581414207517, -0.128652968862129, -0.096604334095511, -0.064459334959752, -0.032246984407967, 0, 0.032246984407966, 0.064459334959752, 0.096604334095511, 0.128652968862129, 0.160581414207517, 0.192371973822785, 0.224013236948676, 0.255499328351621, 0.286828379638309, 0.318000644447447, 0.349016870625636, 0.379877544362281, 0.410583514910296, 0.441138543138549, 0.471554903526460, 0.501865177209623, 0.532149578262066, 0.562609279390930, 0.593792976919849, 0.627104608999527, 0.661825115146115, 0.693342479264069, 0.722848191200045, 0.752213060303187, 0.785125636034162, 0.818161004985501, 0.846951011003893, 0.880898165476357, 0.909997630679600, 0.941963922846026, 0.973476537473530}
+
+	b, err = floatArraysNearlyEqual(s100.Roots(), correctResult)
+	if !b {
+		t.Error(err)
+	}
+
+	//TODO Test a scaled one that splits.
+}
+
 //Benchmarks
 
 var result float64
@@ -225,5 +279,11 @@ func BenchmarkSum(b *testing.B) {
 func BenchmarkDiff(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		s100.Diff()
+	}
+}
+
+func BenchmarkRoots(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		s100.Roots()
 	}
 }
