@@ -2,3 +2,4 @@ language: go
 
 install:
   - go get github.com/mjibson/go-dsp/fft
+  - go get github.com/gonum/matrix/mat64
