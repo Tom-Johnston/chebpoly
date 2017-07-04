@@ -339,3 +339,22 @@ func (poly Chebpoly) Extrema() []extremum {
 
 	return extrema
 }
+
+func (poly Chebpoly) MaxAndMin() (float64, float64){
+	max := poly.Evaluate(-1);
+	min := max;
+	if v := poly.Evaluate(1); v > max {
+		max = v
+	}else if v < min{
+		min = v
+	}
+	criticalPoints := poly.Diff().Roots();
+	for _, w := range criticalPoints {
+		if v := poly.Evaluate(w); v > max {
+			max = v
+		}else if v < min{
+			min = v
+		}
+	}
+	return max, min
+}

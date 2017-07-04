@@ -304,6 +304,26 @@ func TestExtrema(t *testing.T) {
 	}
 }
 
+func TestMaxAndMin(t *testing.T) {
+	t.Log("MaxAndMin - t5")
+	max, min := t5.MaxAndMin()
+	diffMax := math.Abs(max - 1)
+	diffMin := math.Abs(min + 1)
+	t.Logf("Diff Max: %g Diff Min: %g", diffMax, diffMin)
+	if diffMax > tol || math.Abs(min+1) > tol {
+		t.Fail()
+	}
+
+	t.Log("MaxAndMin - s100")
+	max, min = s100.MaxAndMin()
+	diffMax = math.Abs(max - 1.391205486041127)
+	diffMin = math.Abs(min + 1.391205486041127)
+	t.Logf("Diff Max: %g Diff Min: %g", diffMax, diffMin)
+	if diffMax > tol || diffMin > tol {
+		t.Fail()
+	}
+}
+
 //Benchmarks
 
 var result float64
@@ -358,5 +378,11 @@ func BenchmarkRoots(b *testing.B) {
 func BenchmarkExtrema(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		s100.Extrema()
+	}
+}
+
+func BenchmarkMaxAndMin(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		s100.MaxAndMin()
 	}
 }
