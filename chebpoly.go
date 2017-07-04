@@ -333,7 +333,6 @@ func (poly Chebpoly) Extrema() []extremum {
 				criticalPoints = criticalPoints[:len(criticalPoints)-1]
 			}
 		}
-
 	}
 
 	sort.Sort(byPoint(extrema))
