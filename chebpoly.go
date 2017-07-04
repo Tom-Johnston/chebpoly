@@ -125,12 +125,12 @@ func (poly Chebpoly) Sum() float64 {
 func (poly Chebpoly) Diff() Chebpoly {
 	n := poly.Length()
 	derivative := Chebpoly{DomainLower: poly.DomainLower, DomainUpper: poly.DomainUpper}
-	if n == 1{
+	if n == 1 {
 		//poly is a constant so derivative is 0.
 		derivative.Coeffs = make([]float64, 1)
 		return derivative
 	}
-	coeffs := make([]float64, n + 1) //We will add a couple of extra zero entries here to make the code simpler. Note that these entries will probably always be in memory but this is not really a problem.
+	coeffs := make([]float64, n+1) //We will add a couple of extra zero entries here to make the code simpler. Note that these entries will probably always be in memory but this is not really a problem.
 	scaleFactor := 2 / (poly.DomainUpper - poly.DomainLower)
 	for i := n - 2; i > 0; i-- {
 		coeffs[i] = coeffs[i+2] + scaleFactor*2*float64(i+1)*poly.Coeffs[i+1]
@@ -139,6 +139,9 @@ func (poly Chebpoly) Diff() Chebpoly {
 	derivative.Coeffs = coeffs[:n-1]
 	return derivative
 }
+
+const complexTolerance = 1e-14
+const realTolerance = 1e-14
 
 //Roots returns all the real roots of the Chebpoly in [-1,1]
 //This could be extended to provide all the roots of the Chebpoly but it isn't.
@@ -153,7 +156,6 @@ func (poly Chebpoly) Roots() []float64 {
 //This finds the roots in the [-1,1] but they may not be perfectly accurate.
 func (poly Chebpoly) getApproximateRoots() []float64 {
 	n := poly.Length()
-
 	//Truncate the series. We are only after the roots approximately anyway.
 
 	//Calculate the 1 norm
@@ -161,7 +163,7 @@ func (poly Chebpoly) getApproximateRoots() []float64 {
 	for _, v := range poly.Coeffs {
 		norm += math.Abs(v)
 	}
-	cutoffValue := 1e-13*norm;
+	cutoffValue := 1e-13 * norm
 	cutOffPoint := 1
 	//Iterate back through the coefficients to find the first point that we
 	for i := 0; i < n-1; i++ {
@@ -176,9 +178,6 @@ func (poly Chebpoly) getApproximateRoots() []float64 {
 	//We will find the roots by solving the Colleague matrix eigenvalue problem if it is at most maxEigProbSize else we will split the interval in 2 and try again.
 
 	const maxEigProbSize = 50 //Note that making this too small can cause problems as the splitting can reach intervals of lenth around machine precision.
-
-	const complexTolerance = 1e-14
-	const realTolerance = 1e-14
 
 	if n == 1 && coeffs[0] != 0 {
 		return []float64{}
@@ -244,22 +243,100 @@ func (poly Chebpoly) getApproximateRoots() []float64 {
 }
 
 func (poly Chebpoly) refineRoots(roots []float64) []float64 {
-	const maxIterations = 10;
+	const maxIterations = 10
 
-	derivative := poly.Diff();
+	derivative := poly.Diff()
 
-	for i, v := range roots{
-		for i := 0; i < maxIterations; i++{
+	for i, v := range roots {
+		for i := 0; i < maxIterations; i++ {
 			if derivative.Evaluate(v) != 0 {
-				change := poly.Evaluate(v)/derivative.Evaluate(v);
-				if math.Abs(change) > 1e-15{
-					v = v - change;
-				}else{
-					break;
+				change := poly.Evaluate(v) / derivative.Evaluate(v)
+				if math.Abs(change) > 1e-15 {
+					v = v - change
+				} else {
+					break
 				}
 			}
 		}
-		roots[i] = v;
+		roots[i] = v
 	}
 	return roots
+}
+
+type extremum struct {
+	Point float64
+	Value float64
+
+	Maximum bool
+}
+
+type byPoint []extremum
+
+func (a byPoint) Len() int           { return len(a) }
+func (a byPoint) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byPoint) Less(i, j int) bool { return a[i].Point < a[j].Point }
+
+func (poly Chebpoly) Extrema() []extremum {
+	n := poly.Length()
+	if n == 1 {
+		//TODO What should I actually do here?
+		//I'm just going to error because handling these stupid cases is annoying.
+		panic("Uncountably many extrema as function is constant")
+	}
+	diff := poly.Diff()
+	criticalPoints := diff.Roots()
+	extrema := make([]extremum, 0, len(criticalPoints)+2)
+
+	//End points
+	if w := diff.Evaluate(poly.DomainLower); w > 0 { //Note that the criticalPoints are sorted
+		e := extremum{Point: poly.DomainLower, Value: poly.Evaluate(poly.DomainLower), Maximum: false}
+		extrema = append(extrema, e)
+	} else if w < 0 {
+		e := extremum{Point: poly.DomainLower, Value: poly.Evaluate(poly.DomainLower), Maximum: true}
+		extrema = append(extrema, e)
+	}
+
+	if w := diff.Evaluate(poly.DomainUpper); w > 0 { //Note that the criticalPoints are sorted
+		e := extremum{Point: poly.DomainUpper, Value: poly.Evaluate(poly.DomainUpper), Maximum: true}
+		extrema = append(extrema, e)
+	} else if w < 0 {
+		e := extremum{Point: poly.DomainUpper, Value: poly.Evaluate(poly.DomainUpper), Maximum: false}
+		extrema = append(extrema, e)
+	}
+
+	//Remove duplicates
+	for i := len(criticalPoints) - 1; i > 0; i-- {
+		if math.Abs(criticalPoints[i]-criticalPoints[i-1]) < realTolerance {
+			criticalPoints[i] = criticalPoints[len(criticalPoints)-1]
+			criticalPoints = criticalPoints[:len(criticalPoints)-1]
+		}
+	}
+
+	//This will classify the criticalPoints using the Higher Order Derivative Test. Note that we don't care about points of inflection so we don't test for these. They will be added to extrema as they are classified and sorted at the end.
+	d := diff
+	derivativeNumber := 1
+	for len(criticalPoints) > 0 {
+		d = d.Diff() //Compute the next deritive
+		derivativeNumber++
+		for i := len(criticalPoints) - 1; i >= 0; i-- {
+			if w := d.Evaluate(criticalPoints[i]); w > 0 && (derivativeNumber%2) == 0 {
+				//Local Minimum
+				e := extremum{Point: criticalPoints[i], Value: poly.Evaluate(criticalPoints[i]), Maximum: false}
+				extrema = append(extrema, e)
+			} else if w < 0 && (derivativeNumber%2) == 0 {
+				//Local Maximum
+				e := extremum{Point: criticalPoints[i], Value: poly.Evaluate(criticalPoints[i]), Maximum: true}
+				extrema = append(extrema, e)
+			} else if w != 0 {
+				//We have classified the point as either a local minimum, a local maximum or a point of inflection and dealt with it so we can remove it.
+				criticalPoints[i] = criticalPoints[len(criticalPoints)-1]
+				criticalPoints = criticalPoints[:len(criticalPoints)-1]
+			}
+		}
+
+	}
+
+	sort.Sort(byPoint(extrema))
+
+	return extrema
 }

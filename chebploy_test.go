@@ -237,6 +237,11 @@ func TestRoots(t *testing.T) {
 	//TODO Test a scaled one that splits.
 }
 
+func TestExtrema(t *testing.T) {
+	t.Log(t5.Extrema())
+	//TODO
+}
+
 //Benchmarks
 
 var result float64
