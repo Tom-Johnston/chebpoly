@@ -9,7 +9,6 @@ import "sort"
 //Chebpts(n, dl, du) gives the n CHebyshev points of the second kind suitably scaled to the domain [dl,du]
 func Chebpts(n uint, domainLower float64, domainUpper float64) []float64 {
 	if domainLower > domainUpper {
-		fmt.Println("Warning: domainLower is greater than domainUpper. Switching them round...")
 		domainLower, domainUpper = domainUpper, domainLower
 	}
 	points := make([]float64, n)
@@ -28,6 +27,15 @@ type Chebpoly struct {
 	Coeffs []float64 //Coeffs[k] is the coefficient of kth Chebyshev polynomial of the fist kind
 }
 
+func (poly Chebpoly) String() string {
+	if poly.Length() < 10 {
+		return fmt.Sprintf("Interval: [%f %f]  Degree: %d  Coeffs: %v", poly.DomainLower, poly.DomainUpper, poly.Length()-1, poly.Coeffs)
+	} else {
+		return fmt.Sprintf("Interval: [%f %f]  Degree: %d  Coeffs: [%f %f %f %f %f %f %f %f %f %f ...]", poly.DomainLower, poly.DomainUpper, poly.Length()-1, poly.Coeffs[0], poly.Coeffs[1], poly.Coeffs[2], poly.Coeffs[3], poly.Coeffs[4], poly.Coeffs[5], poly.Coeffs[6], poly.Coeffs[7], poly.Coeffs[8], poly.Coeffs[9])
+	}
+
+}
+
 func (poly Chebpoly) Length() int {
 	return len(poly.Coeffs)
 }
@@ -38,7 +46,6 @@ func Interp(values []float64, domainLower float64, domainUpper float64) *Chebpol
 	poly := new(Chebpoly)
 
 	if domainLower > domainUpper {
-		fmt.Println("Warning: domainLower is greater than domainUpper. Switching them round...")
 		domainLower, domainUpper = domainUpper, domainLower
 	}
 	poly.DomainLower = domainLower
@@ -89,18 +96,25 @@ func (poly Chebpoly) Cumsum() Chebpoly {
 	integral.Coeffs = make([]float64, poly.Length()+1)
 	scaleFactor := (poly.DomainUpper - poly.DomainLower) / 2 //Multiply all the coefficients by this factor to account for the change of variables in the integral.
 	b0 := 0.0                                                //This will be the zero coefficient of the integrand
-	integral.Coeffs[1] = scaleFactor * (poly.Coeffs[0] - poly.Coeffs[2]/2)
-	b0 += integral.Coeffs[1]
-	for i := 2; i < n-1; i++ {
-		integral.Coeffs[i] = scaleFactor * (poly.Coeffs[i-1] - poly.Coeffs[i+1]) / (2 * float64(i))
-		if (i % 2) == 0 {
-			b0 -= integral.Coeffs[i]
-		} else {
-			b0 += integral.Coeffs[i]
+	if n > 2 {
+		integral.Coeffs[1] = scaleFactor * (poly.Coeffs[0] - poly.Coeffs[2]/2)
+		b0 += integral.Coeffs[1]
+		for i := 2; i < n-1; i++ {
+			integral.Coeffs[i] = scaleFactor * (poly.Coeffs[i-1] - poly.Coeffs[i+1]) / (2 * float64(i))
+			if (i % 2) == 0 {
+				b0 -= integral.Coeffs[i]
+			} else {
+				b0 += integral.Coeffs[i]
+			}
 		}
+		integral.Coeffs[n-1] = scaleFactor * poly.Coeffs[n-2] / (2 * float64(n-1))
+		integral.Coeffs[n] = scaleFactor * poly.Coeffs[n-1] / (2 * float64(n))
+	} else if n == 2 {
+		integral.Coeffs[1] = scaleFactor * poly.Coeffs[0]
+		integral.Coeffs[2] = scaleFactor * poly.Coeffs[1] / 4
+	} else if n == 1 {
+		integral.Coeffs[1] = scaleFactor * poly.Coeffs[0]
 	}
-	integral.Coeffs[n-1] = scaleFactor * poly.Coeffs[n-2] / (2 * float64(n-1))
-	integral.Coeffs[n] = scaleFactor * poly.Coeffs[n-1] / (2 * float64(n))
 	if (n % 2) == 1 {
 		b0 -= integral.Coeffs[n-1]
 		b0 += integral.Coeffs[n]
@@ -184,8 +198,7 @@ func (poly Chebpoly) getApproximateRoots() []float64 {
 	}
 	if n == 1 {
 		// We will return the middle of the domain like chebfun...
-		fmt.Println("Warning: Finding roots of the 0 polynomial")
-		return []float64{(poly.DomainLower + poly.DomainUpper) / 2}
+		panic("Finding roots of the 0 polynomial")
 	}
 	if n == 2 {
 		root := -coeffs[0] / coeffs[1]
@@ -226,19 +239,9 @@ func (poly Chebpoly) getApproximateRoots() []float64 {
 
 		scaledSplitPoint := (1+splitPoint)*(poly.DomainUpper-poly.DomainLower)/2 + poly.DomainLower
 
-		valuesLeft := make([]float64, n)
-		for i, v := range Chebpts(uint(n), poly.DomainLower, scaledSplitPoint) {
-			valuesLeft[i] = poly.Evaluate(v)
-		}
-		valuesRight := make([]float64, n)
-		for i, v := range Chebpts(uint(n), scaledSplitPoint, poly.DomainUpper) {
-			valuesRight[i] = poly.Evaluate(v)
-		}
+		sections := poly.Split(scaledSplitPoint)
 
-		polyLeft := Interp(valuesLeft, poly.DomainLower, scaledSplitPoint)
-		polyRight := Interp(valuesRight, scaledSplitPoint, poly.DomainUpper)
-
-		return append(polyLeft.getApproximateRoots(), polyRight.getApproximateRoots()...)
+		return append(sections[0].getApproximateRoots(), sections[1].getApproximateRoots()...)
 	}
 }
 
@@ -340,21 +343,184 @@ func (poly Chebpoly) Extrema() []extremum {
 	return extrema
 }
 
-func (poly Chebpoly) MaxAndMin() (float64, float64){
-	max := poly.Evaluate(-1);
-	min := max;
-	if v := poly.Evaluate(1); v > max {
+func (poly Chebpoly) MaxAndMin() (float64, float64) {
+	max := poly.Evaluate(poly.DomainLower)
+	min := max
+	if poly.Length() == 1 {
+		return max, min
+	}
+	if v := poly.Evaluate(poly.DomainUpper); v > max {
 		max = v
-	}else if v < min{
+	} else if v < min {
 		min = v
 	}
-	criticalPoints := poly.Diff().Roots();
+	criticalPoints := poly.Diff().Roots()
 	for _, w := range criticalPoints {
 		if v := poly.Evaluate(w); v > max {
 			max = v
-		}else if v < min{
+		} else if v < min {
 			min = v
 		}
 	}
 	return max, min
 }
+
+func Adaptive(f func(float64) float64, domainLower float64, domainUpper float64) Chebpoly {
+	const startingDegree = 16
+	currentValues := make([]float64, startingDegree+1)
+	points := Chebpts(startingDegree+1, domainLower, domainUpper)
+	maxValue := 0.0
+	for i, v := range points {
+		w := f(v)
+		currentValues[i] = w
+		if math.Abs(w) > maxValue {
+			maxValue = math.Abs(w)
+		}
+	}
+	currentDegree := startingDegree
+	currentPoly := Interp(currentValues, domainLower, domainUpper)
+	for true {
+		points := Chebpts(uint(2*currentDegree+1), domainLower, domainUpper)
+		currentValues = append(currentValues, make([]float64, currentDegree)...)
+		for i := currentDegree; i >= 1; i-- {
+			currentValues[2*i] = currentValues[i]
+		}
+
+		imprecise := false
+		for i := 0; i < currentDegree; i++ {
+			w := f(points[2*i+1])
+			currentValues[2*i+1] = w
+			if math.Abs(w) > maxValue {
+				maxValue = math.Abs(w)
+			}
+			if !imprecise && math.Abs(currentPoly.Evaluate(points[2*i+1])-currentValues[2*i+1]) > 1e-13*maxValue {
+				imprecise = true
+			}
+		}
+
+		if imprecise {
+			//We aren't accurate on the new points so improve
+			currentPoly = Interp(currentValues, domainLower, domainUpper)
+			currentDegree = 2 * currentDegree
+		} else {
+			break
+		}
+	}
+
+	return *currentPoly
+}
+
+func (poly Chebpoly) Split(splitPoints ...float64) []Chebpoly {
+	n := poly.Length()
+	sections := make([]Chebpoly, len(splitPoints)+1)
+	values := make([]float64, n)
+	points := Chebpts(uint(n), 0, 1) //Note that we manipulate the same set of points instead of calling cos multiple times.
+
+	scaleFactor := splitPoints[0] - poly.DomainLower
+	for i, v := range points {
+		values[i] = poly.Evaluate(v*scaleFactor + poly.DomainLower)
+	}
+	sections[0] = *Interp(values, poly.DomainLower, splitPoints[0])
+
+	for i := 1; i < len(splitPoints); i++ {
+		scaleFactor = (splitPoints[i] - splitPoints[i-1])
+		for j, v := range points {
+			values[j] = poly.Evaluate(v*scaleFactor + splitPoints[i-1])
+		}
+		sections[i] = *Interp(values, splitPoints[i-1], splitPoints[i])
+	}
+
+	scaleFactor = poly.DomainUpper - splitPoints[len(splitPoints)-1]
+	for i, v := range points {
+		values[i] = poly.Evaluate(v*scaleFactor + splitPoints[len(splitPoints)-1])
+	}
+	sections[len(splitPoints)] = *Interp(values, splitPoints[len(splitPoints)-1], poly.DomainUpper)
+	return sections
+}
+
+func (poly Chebpoly) Abs() Chebfun {
+	roots := poly.Roots()
+	//Remove duplicates
+	for i := len(roots) - 1; i > 0; i-- {
+		if math.Abs(roots[i]-roots[i-1]) < realTolerance {
+			roots = append(roots[:i], roots[i+1:]...)
+		}
+	}
+	fun := poly.Split(roots...)
+	for i, _ := range fun {
+		v := fun[i]
+		if v.Evaluate((v.DomainLower+v.DomainUpper)/2) < 0 {
+			for j, u := range v.Coeffs {
+				v.Coeffs[j] = -u
+			}
+		}
+	}
+	return fun
+}
+
+//Note that Chebfuns are right-continuous
+type Chebfun []Chebpoly
+
+func (fun Chebfun) TotalLength() int {
+	length := 0
+	for _, v := range fun {
+		length += v.Length()
+	}
+	return length
+}
+
+func (fun Chebfun) Evaluate(x float64) float64 {
+	//Note that if the point x is outside the domain this extends the end piece to the point.
+	f := func(i int) bool { return fun[i].DomainUpper > x }
+	index := sort.Search(len(fun), f)
+	if index == len(fun) {
+		index-- //Extend the last piece.
+	}
+	return fun[index].Evaluate(x)
+}
+
+func (fun Chebfun) Cumsum() Chebfun {
+	newPieces := make([]Chebpoly, len(fun))
+
+	sum := 0.0 //This will be added to
+	for i, v := range fun {
+		newPieces[i] = v.Cumsum()
+		newPieces[i].Coeffs[0] += sum
+		sum += v.Sum()
+	}
+	cumsum := newPieces
+	return cumsum
+}
+
+func (fun Chebfun) Sum() float64 {
+	sum := 0.0
+	for _, v := range fun {
+		sum += v.Sum()
+	}
+	return sum
+}
+
+func (fun Chebfun) MaxAndMin() (float64, float64) {
+	max, min := fun[0].MaxAndMin()
+	tmpmax := 0.0
+	tmpmin := 0.0
+	for i := 1; i < len(fun); i++ {
+		tmpmax, tmpmin = fun[i].MaxAndMin()
+		if tmpmax > max {
+			max = tmpmax
+		}
+		if tmpmin < min {
+			min = tmpmin
+		}
+	}
+	return max, min
+}
+
+//Chebfun says there is a root when there a discontinuity is across 0. Do I want to follow suit?
+// func (fun Chebfun) Roots() []float64{
+// 	roots := make([]float64, 0, fun.TotalLength());
+// 	roots = append(roots, fun)
+// 	for i := 1 ; i < len(fun); i++{
+//
+// 	}
+// }
