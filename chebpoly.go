@@ -515,7 +515,7 @@ func NewChebfun(parts []chebpoly) (chebfun, bool){
 }
 
 func Add(a, b chebfun) {
-	
+
 }
 
 func (fun chebfun) TotalLength() int {
@@ -529,7 +529,7 @@ func (fun chebfun) TotalLength() int {
 func (fun chebfun) Evaluate(x float64) float64 {
 	f := func(i int) bool { return fun[i].domainUpper > x }
 	index := sort.Search(len(fun), f)
-	if index == 0 && fun[0].domainLower < x{
+	if index == 0 && fun[0].domainLower > x{
 		return 0
 	}else if index == len(fun) {
 		return 0

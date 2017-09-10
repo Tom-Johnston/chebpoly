@@ -383,13 +383,20 @@ func TestNewChebfun(t *testing.T){
 
 	parts = []chebpoly{chebpoly{domainLower: -2, domainUpper: -1, coeffs: []float64{0.5, -0.5}}, chebpoly{domainLower: 1, domainUpper: 2, coeffs: []float64{0.5, 0.5}}}
 	fun, pass = NewChebfun(parts)
-	t.Log(fun)
 	if pass == false{
 		t.Fail()
 	}
 	chebfunsNearlyEqual(fun, max0absXminus1,t )
 }
 
+func TestChebfunEvaluate(t *testing.T){
+	floatsNearlyEqual(sgnX.Evaluate(-1), -1, t)
+	floatsNearlyEqual(sgnX.Evaluate(0), 1, t)
+	floatsNearlyEqual(sgnX.Evaluate(1), 0, t)
+
+	floatsNearlyEqual(absX.Evaluate(-0.3), 0.3, t)
+	floatsNearlyEqual(absX.Evaluate(0.3), 0.3, t)
+}
 //Benchmarks
 
 var result float64
