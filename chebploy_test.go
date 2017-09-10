@@ -343,13 +343,13 @@ func TestAbs(t *testing.T) {
 	chebfunsNearlyEqual(x.Abs(), absX, t)
 }
 
-func TestchebfunSum(t *testing.T) {
+func TestChebfunSum(t *testing.T) {
 	floatsNearlyEqual(absX.Sum(), 2.125, t)
 	floatsNearlyEqual(sgnX.Sum(), 0.0, t)
 
 }
 
-func TestchebfunCumSum(t *testing.T) {
+func TestChebfunCumSum(t *testing.T) {
 	correctResult := []chebpoly{chebpoly{domainLower: -0.5, domainUpper: 0, coeffs: []float64{5.0 / 64, 1.0 / 16, -1.0 / 64}}, chebpoly{domainLower: 0, domainUpper: 2, coeffs: []float64{7.0 / 8, 1, 1.0 / 4}}}
 	chebfunsNearlyEqual(absX.Cumsum(), correctResult, t)
 
@@ -357,7 +357,7 @@ func TestchebfunCumSum(t *testing.T) {
 	chebfunsNearlyEqual(sgnX.Cumsum(), correctResult, t)
 }
 
-func TestchebfunMaxAndMin(t *testing.T) {
+func TestChebfunMaxAndMin(t *testing.T) {
 	max, min := absX.MaxAndMin()
 	floatsNearlyEqual(max, 2, t)
 	floatsNearlyEqual(min, 0, t)
