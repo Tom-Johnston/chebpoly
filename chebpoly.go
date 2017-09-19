@@ -12,6 +12,11 @@ func Chebpts(n uint, domainLower float64, domainUpper float64) []float64 {
 		domainLower, domainUpper = domainUpper, domainLower
 	}
 	points := make([]float64, n)
+	if n == 1 {
+		points[0] = 0
+		return points
+	}
+
 	N := int(n)
 	for i, _ := range points {
 		points[i] = (1+math.Cos(math.Pi*float64(N-1-i)/float64(N-1)))*(domainUpper-domainLower)/2 + domainLower
@@ -27,16 +32,47 @@ type chebpoly struct {
 	coeffs []float64 //coeffs[k] is the coefficient of kth Chebyshev polynomial of the fist kind
 }
 
+func AddChebpoly(a, b chebpoly) chebpoly {
+	if a.domainLower != b.domainLower || a.domainUpper != b.domainUpper {
+		panic("The chebpolys have different domains")
+	}
+	if a.Length() < b.Length() {
+		return AddChebpoly(b, a)
+	}
+	sum := a.Copy()
+	for i := 0; i < b.Length(); i++ {
+		sum.coeffs[i] += b.coeffs[i]
+	}
+	return sum
+}
+
+func MultiplyChebpoly(a, b chebpoly) chebpoly {
+	if a.domainLower != b.domainLower || a.domainUpper != b.domainUpper {
+		panic("The chebpolys have different domains")
+	}
+	coeffs := make([]float64, a.Length()+b.Length()-1)
+	for i := 0; i < a.Length(); i++ {
+		for j := 0; j < b.Length(); j++ {
+			coeffs[i+j] += 0.5 * a.coeffs[i] * b.coeffs[j]
+			if i > j {
+				coeffs[i-j] += 0.5 * a.coeffs[i] * b.coeffs[j]
+			} else {
+				coeffs[j-i] += 0.5 * a.coeffs[i] * b.coeffs[j]
+			}
+		}
+	}
+	return chebpoly{domainLower: a.domainLower, domainUpper: b.domainUpper, coeffs: coeffs}
+}
+
 func (poly chebpoly) String() string {
 	if poly.Length() < 10 {
 		return fmt.Sprintf("Interval: [%f %f]  Degree: %d  coeffs: %v", poly.domainLower, poly.domainUpper, poly.Length()-1, poly.coeffs)
 	} else {
 		return fmt.Sprintf("Interval: [%f %f]  Degree: %d  coeffs: [%f %f %f %f %f %f %f %f %f %f ...]", poly.domainLower, poly.domainUpper, poly.Length()-1, poly.coeffs[0], poly.coeffs[1], poly.coeffs[2], poly.coeffs[3], poly.coeffs[4], poly.coeffs[5], poly.coeffs[6], poly.coeffs[7], poly.coeffs[8], poly.coeffs[9])
 	}
-
 }
 
-func (poly chebpoly) Copy() chebpoly{
+func (poly chebpoly) Copy() chebpoly {
 	copyCoeffs := make([]float64, len(poly.coeffs))
 	copy(copyCoeffs, poly.coeffs)
 	return chebpoly{domainLower: poly.domainLower, domainUpper: poly.domainUpper, coeffs: copyCoeffs}
@@ -68,6 +104,11 @@ func Interp(values []float64, domainLower float64, domainUpper float64) chebpoly
 	}
 	poly.domainLower = domainLower
 	poly.domainUpper = domainUpper
+
+	if n == 1 {
+		poly.coeffs = []float64{values[0]}
+		return *poly
+	}
 
 	expandedData := make([]float64, 2*(n-1))
 	for i := 0; i < n-1; i++ {
@@ -437,7 +478,6 @@ func (poly chebpoly) Split(splitPoints ...float64) []chebpoly {
 	sections := make([]chebpoly, len(splitPoints)+1)
 	values := make([]float64, n)
 	points := Chebpts(uint(n), 0, 1) //Note that we manipulate the same set of points instead of calling cos multiple times.
-
 	scaleFactor := splitPoints[0] - poly.domainLower
 	for i, v := range points {
 		values[i] = poly.Evaluate(v*scaleFactor + poly.domainLower)
@@ -483,10 +523,10 @@ func (poly chebpoly) Abs() chebfun {
 //Note that chebfuns are right-continuous and most be sorted with no overlap.
 type chebfun []chebpoly
 
-func (fun chebfun) Copy() chebfun{
+func (fun chebfun) Copy() chebfun {
 	copy := make([]chebpoly, len(fun))
-	for i := 0; i < len(fun); i++{
-		copy[i] = fun[i].Copy();
+	for i := 0; i < len(fun); i++ {
+		copy[i] = fun[i].Copy()
 	}
 	return copy
 }
@@ -495,27 +535,158 @@ func (a chebfun) Len() int           { return len(a) }
 func (a chebfun) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a chebfun) Less(i, j int) bool { return a[i].domainLower < a[j].domainLower }
 
-func NewChebfun(parts []chebpoly) (chebfun, bool){
+func NewChebfun(parts []chebpoly) (chebfun, bool) {
 	fun := chebfun(parts).Copy()
 	sort.Sort(fun)
-	hscale := fun[len(fun) - 1].domainUpper - fun[0].domainLower
-	for i := 0; i < len(parts) - 1; i++{
-		if fun[i].domainUpper < fun[i + 1].domainLower - realTolerance*hscale{
-			fun = append(fun, chebpoly{domainLower: fun[i].domainUpper, domainUpper: fun[i + 1].domainLower, coeffs: []float64{0}})
-		}else if fun[i].domainUpper > fun[i + 1].domainLower + realTolerance*hscale{
+	hscale := fun[len(fun)-1].domainUpper - fun[0].domainLower
+	for i := 0; i < len(parts)-1; i++ {
+		if fun[i].domainUpper < fun[i+1].domainLower-realTolerance*hscale {
+			fun = append(fun, chebpoly{domainLower: fun[i].domainUpper, domainUpper: fun[i+1].domainLower, coeffs: []float64{0}})
+		} else if fun[i].domainUpper > fun[i+1].domainLower+realTolerance*hscale {
 			return nil, false
-		}else{
-			v := (fun[i+1].domainLower + fun[i].domainUpper)/2
-			fun[i+1].domainLower = v;
+		} else {
+			v := (fun[i+1].domainLower + fun[i].domainUpper) / 2
+			fun[i+1].domainLower = v
 			fun[i].domainUpper = v
 		}
 	}
-	sort.Sort(fun);
+	sort.Sort(fun)
 	return fun, true
 }
 
-func Add(a, b chebfun) {
+func alignChebfuns(funA, funB chebfun) (chebfun, chebfun) {
+	a := funA.Copy()
+	b := funB.Copy()
 
+	hscale := math.Max(a[len(a)-1].domainUpper-a[0].domainLower, b[len(b)-1].domainUpper-b[0].domainLower)
+
+	aSplitPoints := make([]float64, len(a)+1)
+	aSplitPoints[0] = a[0].domainLower
+	bSplitPoints := make([]float64, len(b)+1)
+	bSplitPoints[0] = b[0].domainLower
+
+	for i := 0; i < len(a); i++ {
+		aSplitPoints[i+1] = a[i].domainUpper
+	}
+	for i := 0; i < len(b); i++ {
+		bSplitPoints[i+1] = b[i].domainUpper
+	}
+
+	bIndex := 0
+	for i := 0; i < len(aSplitPoints); i++ {
+		if (i == len(aSplitPoints)-1 || aSplitPoints[i+1]-aSplitPoints[i] > 2*hscale*realTolerance) && (i == 0 || aSplitPoints[i]-aSplitPoints[i-1] > 2*hscale*realTolerance) {
+			//We can move this splitPoint
+			for bIndex < len(bSplitPoints) {
+				if bSplitPoints[bIndex] < aSplitPoints[i]-hscale*realTolerance {
+					bIndex++
+				} else if bSplitPoints[bIndex] > aSplitPoints[i]+hscale*realTolerance {
+					break
+				} else if (bIndex == len(bSplitPoints)-1 || aSplitPoints[i+1]-aSplitPoints[i] > 2*hscale*realTolerance) && (i == 0 || aSplitPoints[i]-aSplitPoints[i-1] > 2*hscale*realTolerance) {
+					v := (aSplitPoints[i] + bSplitPoints[bIndex]) / 2
+					aSplitPoints[i], bSplitPoints[bIndex] = v, v
+					bIndex++
+				}
+			}
+		}
+	}
+
+	a[0].domainLower = aSplitPoints[0]
+	b[0].domainLower = bSplitPoints[0]
+
+	for i := 0; i < len(a); i++ {
+		a[i].domainLower = aSplitPoints[i]
+		a[i].domainUpper = aSplitPoints[i+1]
+	}
+	for i := 0; i < len(b); i++ {
+		b[i].domainLower = bSplitPoints[i]
+		b[i].domainUpper = bSplitPoints[i+1]
+	}
+
+	//Extend a
+	if b[0].domainLower < a[0].domainLower {
+		a = append(a, chebpoly{})
+		copy(a[1:], a[0:])
+		a[0] = chebpoly{domainLower: b[0].domainLower, domainUpper: a[0].domainLower, coeffs: []float64{0}}
+	}
+	if b[len(b)-1].domainUpper > a[len(a)-1].domainUpper {
+		a = append(a, chebpoly{domainLower: a[len(a)-1].domainUpper, domainUpper: b[len(b)-1].domainUpper, coeffs: []float64{0}})
+	}
+	//Extend b
+	if a[0].domainLower < b[0].domainLower {
+		b = append(b, chebpoly{})
+		copy(b[1:], b[0:])
+		b[0] = chebpoly{domainLower: a[0].domainLower, domainUpper: b[0].domainLower, coeffs: []float64{0}}
+	}
+	if a[len(a)-1].domainUpper > b[len(b)-1].domainUpper {
+		b = append(b, chebpoly{domainLower: b[len(b)-1].domainUpper, domainUpper: a[len(a)-1].domainUpper, coeffs: []float64{0}})
+	}
+	//Split a
+	var splitPoints []float64
+	if len(a) > len(b) {
+		splitPoints = make([]float64, 0, len(a)+1)
+	} else {
+		splitPoints = make([]float64, 0, len(b)+1)
+	}
+
+	pointIndex := 0
+	i := 0
+	for i < len(a) {
+		for pointIndex < len(bSplitPoints) {
+			if bSplitPoints[pointIndex] < a[i].domainUpper && bSplitPoints[pointIndex] > a[i].domainLower {
+				splitPoints = append(splitPoints, bSplitPoints[pointIndex])
+				pointIndex++
+			} else if bSplitPoints[pointIndex] <= a[i].domainLower {
+				pointIndex++
+			} else {
+				break
+			}
+		}
+		if len(splitPoints) > 0 {
+			a = append(a[0:i], append(a[i].Split(splitPoints...), a[i+1:]...)...)
+		}
+		i += len(splitPoints) + 1
+		splitPoints = splitPoints[:0]
+	}
+	//Split b
+	pointIndex = 0
+	i = 0
+	for i < len(b) {
+		for pointIndex < len(aSplitPoints) {
+			if aSplitPoints[pointIndex] < b[i].domainUpper && aSplitPoints[pointIndex] > b[i].domainLower {
+				splitPoints = append(splitPoints, aSplitPoints[pointIndex])
+				pointIndex++
+			} else if aSplitPoints[pointIndex] <= b[i].domainLower {
+				pointIndex++
+			} else {
+				break
+			}
+		}
+		if len(splitPoints) > 0 {
+			b = append(b[0:i], append(b[i].Split(splitPoints...), b[i+1:]...)...)
+		}
+		i += len(splitPoints) + 1
+		splitPoints = splitPoints[:0]
+	}
+	return a, b
+
+}
+
+func Add(a, b chebfun) chebfun {
+	a2, b2 := alignChebfuns(a, b)
+	for i := 0; i < len(a2); i++ {
+		a2[i] = AddChebpoly(a2[i], b2[i])
+	}
+
+	return a2
+}
+
+func Multiply(a, b chebfun) chebfun {
+	a2, b2 := alignChebfuns(a, b)
+	for i := 0; i < len(a2); i++ {
+		a2[i] = MultiplyChebpoly(a2[i], b2[i])
+	}
+
+	return a2
 }
 
 func (fun chebfun) TotalLength() int {
@@ -529,9 +700,9 @@ func (fun chebfun) TotalLength() int {
 func (fun chebfun) Evaluate(x float64) float64 {
 	f := func(i int) bool { return fun[i].domainUpper > x }
 	index := sort.Search(len(fun), f)
-	if index == 0 && fun[0].domainLower > x{
+	if index == 0 && fun[0].domainLower > x {
 		return 0
-	}else if index == len(fun) {
+	} else if index == len(fun) {
 		return 0
 	}
 	return fun[index].Evaluate(x)

@@ -172,7 +172,6 @@ func TestChebpts(t *testing.T) {
 }
 
 func TestInterp(t *testing.T) {
-
 	t.Log("TestInterp - t4")
 	output := Interp([]float64{1, -1, 1, -1, 1}, -1, 1)
 	chebpolysNearlyEqual(output, t4, t)
@@ -206,7 +205,6 @@ func TestEvaluate(t *testing.T) {
 	floatsNearlyEqual(t5Scaled.Evaluate(Chebpts(6, 0.5, 2)[2]), -1.0, t)
 
 	floatsNearlyEqual(s100.Evaluate(0.6), -0.499401732854600, t)
-
 }
 
 func TestCumsum(t *testing.T) {
@@ -331,6 +329,19 @@ func TestAdaptive(t *testing.T) {
 	floatArraysNearlyEqual(poly.Roots(), correctRoots, t)
 }
 
+func TestMultiplyChebpoly(t *testing.T) {
+	var correctResult chebpoly = chebpoly{domainLower: -1, domainUpper: 1, coeffs: []float64{0, 0.5, 0, 0, 0, 0, 0, 0, 0, 0.5}}
+	chebpolysNearlyEqual(MultiplyChebpoly(t5, t4), correctResult, t)
+
+	var correctValues []float64 = []float64{-0.506365641109759, -0.609608818457388, 0.856876925796270, -0.486880445734564, 0.037874627419693, -0.131187426851968, 1.042116692880613, -1.131575029960765, 0.611275817602317, -0.158129369227505, 0, -0.158129369227505, 0.611275817602317, -1.131575029960765, 1.042116692880613, -0.131187426851968, 0.037874627419693, -0.486880445734564, 0.856876925796270, -0.609608818457388, -0.506365641109759}
+	var foundValues []float64 = make([]float64, 21)
+	mul := MultiplyChebpoly(s100, t5)
+	for i := 0; i < 21; i++ {
+		foundValues[i] = mul.Evaluate(-1.0 + float64(i)*0.1)
+	}
+	floatArraysNearlyEqual(foundValues, correctValues, t)
+}
+
 //|x| on [-0.5,2]
 var absX chebfun = []chebpoly{chebpoly{domainLower: -0.5, domainUpper: 0, coeffs: []float64{0.25, -0.25}}, chebpoly{domainLower: 0, domainUpper: 2, coeffs: []float64{1, 1}}}
 
@@ -346,7 +357,6 @@ func TestAbs(t *testing.T) {
 func TestChebfunSum(t *testing.T) {
 	floatsNearlyEqual(absX.Sum(), 2.125, t)
 	floatsNearlyEqual(sgnX.Sum(), 0.0, t)
-
 }
 
 func TestChebfunCumSum(t *testing.T) {
@@ -367,29 +377,29 @@ func TestChebfunMaxAndMin(t *testing.T) {
 	floatsNearlyEqual(min, -1, t)
 }
 
-func TestNewChebfun(t *testing.T){
+func TestNewChebfun(t *testing.T) {
 	parts := []chebpoly{chebpoly{domainLower: -1, domainUpper: 1, coeffs: []float64{0}}, chebpoly{domainLower: 0.5, domainUpper: 2, coeffs: []float64{0}}}
-	fun, pass := NewChebfun(parts);
-	if fun != nil || pass != false{
+	fun, pass := NewChebfun(parts)
+	if fun != nil || pass != false {
 		t.Fail()
 	}
 
 	parts = []chebpoly{sgnX[1], sgnX[0]}
 	fun, pass = NewChebfun(parts)
-	if pass == false{
+	if pass == false {
 		t.Fail()
 	}
 	chebfunsNearlyEqual(fun, sgnX, t)
 
 	parts = []chebpoly{chebpoly{domainLower: -2, domainUpper: -1, coeffs: []float64{0.5, -0.5}}, chebpoly{domainLower: 1, domainUpper: 2, coeffs: []float64{0.5, 0.5}}}
 	fun, pass = NewChebfun(parts)
-	if pass == false{
+	if pass == false {
 		t.Fail()
 	}
-	chebfunsNearlyEqual(fun, max0absXminus1,t )
+	chebfunsNearlyEqual(fun, max0absXminus1, t)
 }
 
-func TestChebfunEvaluate(t *testing.T){
+func TestChebfunEvaluate(t *testing.T) {
 	floatsNearlyEqual(sgnX.Evaluate(-1), -1, t)
 	floatsNearlyEqual(sgnX.Evaluate(0), 1, t)
 	floatsNearlyEqual(sgnX.Evaluate(1), 0, t)
@@ -397,6 +407,19 @@ func TestChebfunEvaluate(t *testing.T){
 	floatsNearlyEqual(absX.Evaluate(-0.3), 0.3, t)
 	floatsNearlyEqual(absX.Evaluate(0.3), 0.3, t)
 }
+
+func TestChebfunAdd(t *testing.T) {
+	var correctResult chebfun = []chebpoly{chebpoly{domainLower: -1, domainUpper: -0.5, coeffs: []float64{-1}}, chebpoly{domainLower: -0.5, domainUpper: 0, coeffs: []float64{-0.75, -0.25}}, chebpoly{domainLower: 0, domainUpper: 1, coeffs: []float64{1.5, 0.5}}, chebpoly{domainLower: 1, domainUpper: 2, coeffs: []float64{1.5, 0.5}}}
+	chebfunsNearlyEqual(Add(absX, sgnX), correctResult, t)
+	chebfunsNearlyEqual(Add(sgnX, absX), correctResult, t)
+}
+
+func TestChebfunMultiply(t *testing.T) {
+	var correctResult chebfun = []chebpoly{chebpoly{domainLower: -1, domainUpper: -0.5, coeffs: []float64{0}}, chebpoly{domainLower: -0.5, domainUpper: 0, coeffs: []float64{-0.25, 0.25}}, chebpoly{domainLower: 0, domainUpper: 1, coeffs: []float64{0.5, 0.5}}, chebpoly{domainLower: 1, domainUpper: 2, coeffs: []float64{0, 0}}}
+	chebfunsNearlyEqual(Multiply(absX, sgnX), correctResult, t)
+	chebfunsNearlyEqual(Multiply(sgnX, absX), correctResult, t)
+}
+
 //Benchmarks
 
 var result float64
@@ -463,5 +486,11 @@ func BenchmarkMaxAndMin(b *testing.B) {
 func BenchmarkAbs(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		s100.Abs()
+	}
+}
+
+func BenchmarkMultiplyChebpoly(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		MultiplyChebpoly(t5, s100)
 	}
 }
