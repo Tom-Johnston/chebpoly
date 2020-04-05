@@ -213,6 +213,11 @@ func TestMaxAndMin(t *testing.T) {
 	max, min = t5Scaled.MaxAndMin()
 	floatsNearlyEqual(max, 1, t)
 	floatsNearlyEqual(min, -1, t)
+
+	s := Adaptive(xsinx, -1, 1)
+	max, min = s.MaxAndMin()
+	floatsNearlyEqual(max, 0.57923032735651960910655, t)
+	floatsNearlyEqual(min, 0, t)
 }
 
 func cos5(x float64) float64 {
@@ -221,6 +226,10 @@ func cos5(x float64) float64 {
 
 func sin100(x float64) float64 {
 	return math.Sin(100 * x * math.Pi)
+}
+
+func xsinx(x float64) float64 {
+	return x * math.Sin(x*math.Pi)
 }
 
 func TestAdaptive(t *testing.T) {
