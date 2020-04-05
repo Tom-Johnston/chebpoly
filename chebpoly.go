@@ -141,7 +141,7 @@ func Adaptive(f func(float64) float64, domainLower float64, domainUpper float64)
 			}
 		}
 		for i := 0; i < currentDegree; i++ {
-			if !imprecise && math.Abs(currentPoly.Evaluate(points[2*i+1])-currentValues[2*i+1]) > precision*maxValue+precision+1e-16*float64(currentDegree) {
+			if !imprecise && math.Abs(Evaluate(currentPoly, points[2*i+1])-currentValues[2*i+1]) > precision*maxValue+precision+1e-16*float64(currentDegree) {
 				imprecise = true
 			}
 		}
@@ -222,7 +222,7 @@ func (poly Chebpoly) Values() []float64 {
 }
 
 //Evaluate returns the value of the Chebypoly poly at the point x. It uses Clenshaw's algorithm.
-func (poly Chebpoly) Evaluate(x float64) float64 {
+func Evaluate(poly Chebpoly, x float64) float64 {
 	scaledX := (x-poly.domainLower)/(poly.domainUpper-poly.domainLower)*2 - 1
 	bk2 := 0.0
 	bk1 := 0.0
@@ -241,7 +241,7 @@ func (poly Chebpoly) Evaluate(x float64) float64 {
 
 //Cumsum returns the chebpoly of the indefinite integral.
 //The constant of integration is taken so that Cumsum(domainLower) = 0
-func (poly Chebpoly) Cumsum() Chebpoly {
+func Cumsum(poly Chebpoly) Chebpoly {
 	n := poly.Length()
 	integral := Chebpoly{domainLower: poly.domainLower, domainUpper: poly.domainUpper}
 	integral.coeffs = make([]float64, poly.Length()+1)
@@ -278,7 +278,7 @@ func (poly Chebpoly) Cumsum() Chebpoly {
 }
 
 //Sum returns the integral of the chebpoly over the domain.
-func (poly Chebpoly) Sum() float64 {
+func Sum(poly Chebpoly) float64 {
 	sum := 0.0
 	for i := 0; i < poly.Length(); i += 2 {
 		sum += -poly.coeffs[i] * 2 / float64(i*i-1)
@@ -287,7 +287,7 @@ func (poly Chebpoly) Sum() float64 {
 }
 
 //Diff returns the chebpoly representing the derivative of the given chebpoly
-func (poly Chebpoly) Diff() Chebpoly {
+func Diff(poly Chebpoly) Chebpoly {
 	n := poly.Length()
 	derivative := Chebpoly{domainLower: poly.domainLower, domainUpper: poly.domainUpper}
 	if n == 1 {
@@ -306,28 +306,28 @@ func (poly Chebpoly) Diff() Chebpoly {
 }
 
 //Split returns the Chebpolys from doing separate Chebyshev approximations for each interval created by splitting [domainLower, domainUpper] at the splitPoints.
-func (poly Chebpoly) Split(splitPoints ...float64) []Chebpoly {
+func Split(poly Chebpoly, splitPoints ...float64) []Chebpoly {
 	n := poly.Length()
 	sections := make([]Chebpoly, len(splitPoints)+1)
 	values := make([]float64, n)
 	points := Chebpts(uint(n), 0, 1) //Note that we manipulate the same set of points instead of calling cos multiple times.
 	scaleFactor := splitPoints[0] - poly.domainLower
 	for i, v := range points {
-		values[i] = poly.Evaluate(v*scaleFactor + poly.domainLower)
+		values[i] = Evaluate(poly, v*scaleFactor+poly.domainLower)
 	}
 	sections[0] = Interp(values, poly.domainLower, splitPoints[0])
 
 	for i := 1; i < len(splitPoints); i++ {
 		scaleFactor = (splitPoints[i] - splitPoints[i-1])
 		for j, v := range points {
-			values[j] = poly.Evaluate(v*scaleFactor + splitPoints[i-1])
+			values[j] = Evaluate(poly, v*scaleFactor+splitPoints[i-1])
 		}
 		sections[i] = Interp(values, splitPoints[i-1], splitPoints[i])
 	}
 
 	scaleFactor = poly.domainUpper - splitPoints[len(splitPoints)-1]
 	for i, v := range points {
-		values[i] = poly.Evaluate(v*scaleFactor + splitPoints[len(splitPoints)-1])
+		values[i] = Evaluate(poly, v*scaleFactor+splitPoints[len(splitPoints)-1])
 	}
 	sections[len(splitPoints)] = Interp(values, splitPoints[len(splitPoints)-1], poly.domainUpper)
 	return sections
@@ -335,7 +335,7 @@ func (poly Chebpoly) Split(splitPoints ...float64) []Chebpoly {
 
 //Roots returns all the real roots of the chebpoly in [-1,1]
 //This could be extended to provide all the roots of the chebpoly but it isn't.
-func (poly Chebpoly) Roots() []float64 {
+func Roots(poly Chebpoly) []float64 {
 
 	roots := poly.getApproximateRoots(1e-15)
 	roots = poly.refineRoots(roots)
@@ -410,7 +410,7 @@ func (poly Chebpoly) getApproximateRoots(tol float64) []float64 {
 
 	scaledSplitPoint := (1+splitPoint)*(poly.domainUpper-poly.domainLower)/2 + poly.domainLower
 
-	sections := poly.Split(scaledSplitPoint)
+	sections := Split(poly, scaledSplitPoint)
 
 	for i := range sections {
 		maxCoeff := 0.0
@@ -431,13 +431,13 @@ func (poly Chebpoly) getApproximateRoots(tol float64) []float64 {
 func (poly Chebpoly) refineRoots(roots []float64) []float64 {
 	const maxIterations = 20
 
-	derivative := poly.Diff()
+	derivative := Diff(poly)
 
 	for i := len(roots) - 1; i >= 0; i-- {
 		v := roots[i]
 		for i := 0; i < maxIterations; i++ {
-			if derivative.Evaluate(v) != 0 {
-				change := poly.Evaluate(v) / derivative.Evaluate(v)
+			if Evaluate(derivative, v) != 0 {
+				change := Evaluate(poly, v) / Evaluate(derivative, v)
 				if math.Abs(change) > 1e-15 {
 					v = v - change
 				} else {
@@ -445,7 +445,7 @@ func (poly Chebpoly) refineRoots(roots []float64) []float64 {
 				}
 			}
 		}
-		if math.Abs(poly.Evaluate(v)) < 1e-12+1e-16*float64(poly.Length()) {
+		if math.Abs(Evaluate(poly, v)) < 1e-12+1e-16*float64(poly.Length()) {
 			roots[i] = v
 		} else {
 			roots[i] = roots[len(roots)-1]
@@ -494,7 +494,7 @@ func (a byPoint) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byPoint) Less(i, j int) bool { return a[i].Point < a[j].Point }
 
 //Extrema returns the local maxmima and minima of the Chebyshev approximation. The end points are considered to be extrema.
-func (poly Chebpoly) Extrema() []Extremum {
+func Extrema(poly Chebpoly) []Extremum {
 	const realTolerance = 1e-13
 
 	n := poly.Length()
@@ -503,24 +503,24 @@ func (poly Chebpoly) Extrema() []Extremum {
 		//I'm just going to error because handling these stupid cases is annoying.
 		panic("Uncountably many extrema as function is constant")
 	}
-	diff := poly.Diff()
-	criticalPoints := diff.Roots()
+	diff := Diff(poly)
+	criticalPoints := Roots(diff)
 	extrema := make([]Extremum, 0, len(criticalPoints)+2)
 
 	//End points
-	if w := diff.Evaluate(poly.domainLower); w > 0 { //Note that the criticalPoints are sorted
-		e := Extremum{Point: poly.domainLower, Value: poly.Evaluate(poly.domainLower), Maximum: false}
+	if w := Evaluate(diff, poly.domainLower); w > 0 { //Note that the criticalPoints are sorted
+		e := Extremum{Point: poly.domainLower, Value: Evaluate(poly, poly.domainLower), Maximum: false}
 		extrema = append(extrema, e)
 	} else if w < 0 {
-		e := Extremum{Point: poly.domainLower, Value: poly.Evaluate(poly.domainLower), Maximum: true}
+		e := Extremum{Point: poly.domainLower, Value: Evaluate(poly, poly.domainLower), Maximum: true}
 		extrema = append(extrema, e)
 	}
 
-	if w := diff.Evaluate(poly.domainUpper); w > 0 { //Note that the criticalPoints are sorted
-		e := Extremum{Point: poly.domainUpper, Value: poly.Evaluate(poly.domainUpper), Maximum: true}
+	if w := Evaluate(diff, poly.domainUpper); w > 0 { //Note that the criticalPoints are sorted
+		e := Extremum{Point: poly.domainUpper, Value: Evaluate(poly, poly.domainUpper), Maximum: true}
 		extrema = append(extrema, e)
 	} else if w < 0 {
-		e := Extremum{Point: poly.domainUpper, Value: poly.Evaluate(poly.domainUpper), Maximum: false}
+		e := Extremum{Point: poly.domainUpper, Value: Evaluate(poly, poly.domainUpper), Maximum: false}
 		extrema = append(extrema, e)
 	}
 
@@ -536,16 +536,16 @@ func (poly Chebpoly) Extrema() []Extremum {
 	d := diff
 	derivativeNumber := 1
 	for len(criticalPoints) > 0 {
-		d = d.Diff() //Compute the next deritive
+		d = Diff(d) //Compute the next deritive
 		derivativeNumber++
 		for i := len(criticalPoints) - 1; i >= 0; i-- {
-			if w := d.Evaluate(criticalPoints[i]); w > 0 && (derivativeNumber%2) == 0 {
+			if w := Evaluate(d, criticalPoints[i]); w > 0 && (derivativeNumber%2) == 0 {
 				//Local Minimum
-				e := Extremum{Point: criticalPoints[i], Value: poly.Evaluate(criticalPoints[i]), Maximum: false}
+				e := Extremum{Point: criticalPoints[i], Value: Evaluate(poly, criticalPoints[i]), Maximum: false}
 				extrema = append(extrema, e)
 			} else if w < 0 && (derivativeNumber%2) == 0 {
 				//Local Maximum
-				e := Extremum{Point: criticalPoints[i], Value: poly.Evaluate(criticalPoints[i]), Maximum: true}
+				e := Extremum{Point: criticalPoints[i], Value: Evaluate(poly, criticalPoints[i]), Maximum: true}
 				extrema = append(extrema, e)
 			} else if w != 0 {
 				//We have classified the point as either a local minimum, a local maximum or a point of inflection and dealt with it so we can remove it.
@@ -561,20 +561,20 @@ func (poly Chebpoly) Extrema() []Extremum {
 }
 
 //MaxAndMin returns the maximum and the minimum of the poly.
-func (poly Chebpoly) MaxAndMin() (float64, float64) {
-	max := poly.Evaluate(poly.domainLower)
+func MaxAndMin(poly Chebpoly) (float64, float64) {
+	max := Evaluate(poly, poly.domainLower)
 	min := max
 	if poly.Length() == 1 {
 		return max, min
 	}
-	if v := poly.Evaluate(poly.domainUpper); v > max {
+	if v := Evaluate(poly, poly.domainUpper); v > max {
 		max = v
 	} else if v < min {
 		min = v
 	}
-	criticalPoints := poly.Diff().Roots()
+	criticalPoints := Roots(Diff(poly))
 	for _, w := range criticalPoints {
-		if v := poly.Evaluate(w); v > max {
+		if v := Evaluate(poly, w); v > max {
 			max = v
 		} else if v < min {
 			min = v

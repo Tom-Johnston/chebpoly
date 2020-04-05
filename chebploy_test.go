@@ -131,35 +131,35 @@ func TestInterp(t *testing.T) {
 }
 
 func TestEvaluate(t *testing.T) {
-	floatsNearlyEqual(t5.Evaluate(Chebpts(6, -1, 1)[2]), -1.0, t)
+	floatsNearlyEqual(Evaluate(t5, Chebpts(6, -1, 1)[2]), -1.0, t)
 
-	floatsNearlyEqual(t4.Evaluate(Chebpts(5, -1, 1)[2]), 1.0, t)
+	floatsNearlyEqual(Evaluate(t4, Chebpts(5, -1, 1)[2]), 1.0, t)
 
-	floatsNearlyEqual(t5Scaled.Evaluate(Chebpts(6, 0.5, 2)[2]), -1.0, t)
+	floatsNearlyEqual(Evaluate(t5Scaled, Chebpts(6, 0.5, 2)[2]), -1.0, t)
 }
 
 func TestCumsum(t *testing.T) {
 
-	chebpolysNearlyEqual(t4.Cumsum(), t4Cumsum, t)
+	chebpolysNearlyEqual(Cumsum(t4), t4Cumsum, t)
 
-	chebpolysNearlyEqual(t5Scaled.Cumsum(), t5ScaledCumsum, t)
+	chebpolysNearlyEqual(Cumsum(t5Scaled), t5ScaledCumsum, t)
 }
 
 func TestSum(t *testing.T) {
 
-	floatsNearlyEqual(t4.Sum(), -2.0/15, t)
+	floatsNearlyEqual(Sum(t4), -2.0/15, t)
 
-	floatsNearlyEqual(t5.Sum(), 0.0, t)
+	floatsNearlyEqual(Sum(t5), 0.0, t)
 
-	floatsNearlyEqual(t4Scaled.Sum(), -1.0/10, t)
+	floatsNearlyEqual(Sum(t4Scaled), -1.0/10, t)
 
 }
 
 func TestDiff(t *testing.T) {
 
-	chebpolysNearlyEqual(t4Cumsum.Diff(), t4, t)
+	chebpolysNearlyEqual(Diff(t4Cumsum), t4, t)
 
-	chebpolysNearlyEqual(t5ScaledCumsum.Diff(), t5Scaled, t)
+	chebpolysNearlyEqual(Diff(t5ScaledCumsum), t5Scaled, t)
 
 }
 
@@ -167,28 +167,28 @@ func TestRoots(t *testing.T) {
 
 	poly := Chebpoly{domainLower: -1, domainUpper: 1, coeffs: []float64{2.4}}
 	correctResult := []float64{}
-	floatArraysNearlyEqual(poly.Roots(), correctResult, t)
+	floatArraysNearlyEqual(Roots(poly), correctResult, t)
 
 	poly = Chebpoly{domainLower: -1, domainUpper: 1, coeffs: []float64{0, 1}}
 	correctResult = []float64{0}
-	floatArraysNearlyEqual(poly.Roots(), correctResult, t)
+	floatArraysNearlyEqual(Roots(poly), correctResult, t)
 
 	poly = Chebpoly{domainLower: -1, domainUpper: 1, coeffs: []float64{2, 1}}
 	correctResult = []float64{}
-	floatArraysNearlyEqual(poly.Roots(), correctResult, t)
+	floatArraysNearlyEqual(Roots(poly), correctResult, t)
 
 	correctResult = []float64{math.Cos(4*math.Pi/5 + math.Pi/10), math.Cos(3*math.Pi/5 + math.Pi/10), 0, math.Cos(1*math.Pi/5 + math.Pi/10), math.Cos(math.Pi / 10)}
-	floatArraysNearlyEqual(t5.Roots(), correctResult, t)
+	floatArraysNearlyEqual(Roots(t5), correctResult, t)
 
 	correctResult = []float64{0.536707612778635, 0.809161060780646, 1.25, 1.690838939219355, 1.963292387221366}
-	floatArraysNearlyEqual(t5Scaled.Roots(), correctResult, t)
+	floatArraysNearlyEqual(Roots(t5Scaled), correctResult, t)
 
 	correctResult = make([]float64, 201)
 	for i := range correctResult {
 		correctResult[i] = -1.0 + float64(i)*(0.01)
 	}
 	s100 := Adaptive(sin100, -1, 1)
-	floatArraysNearlyEqual(s100.Roots(), correctResult, t)
+	floatArraysNearlyEqual(Roots(s100), correctResult, t)
 
 }
 
@@ -202,20 +202,20 @@ func TestExtrema(t *testing.T) {
 		Extremum{Point: 1, Value: 1, Maximum: true},
 	}
 
-	extremaNearlyEqual(t5.Extrema(), correctResult, t)
+	extremaNearlyEqual(Extrema(t5), correctResult, t)
 }
 
 func TestMaxAndMin(t *testing.T) {
-	max, min := t5.MaxAndMin()
+	max, min := MaxAndMin(t5)
 	floatsNearlyEqual(max, 1, t)
 	floatsNearlyEqual(min, -1, t)
 
-	max, min = t5Scaled.MaxAndMin()
+	max, min = MaxAndMin(t5Scaled)
 	floatsNearlyEqual(max, 1, t)
 	floatsNearlyEqual(min, -1, t)
 
 	s := Adaptive(xsinx, -1, 1)
-	max, min = s.MaxAndMin()
+	max, min = MaxAndMin(s)
 	floatsNearlyEqual(max, 0.57923032735651960910655, t)
 	floatsNearlyEqual(min, 0, t)
 }
@@ -235,7 +235,7 @@ func xsinx(x float64) float64 {
 func TestAdaptive(t *testing.T) {
 	poly := Adaptive(cos5, -1.0, 1.0)
 	correctValue := math.Sin(5) / 2.5
-	floatsNearlyEqual(poly.Sum(), correctValue, t)
+	floatsNearlyEqual(Sum(poly), correctValue, t)
 
 	correctExtrema := []Extremum{
 		Extremum{Point: -1, Value: cos5(-1), Maximum: true},
@@ -244,9 +244,9 @@ func TestAdaptive(t *testing.T) {
 		Extremum{Point: math.Pi / 5, Value: -1, Maximum: false},
 		Extremum{Point: 1, Value: cos5(1), Maximum: true},
 	}
-	extremaNearlyEqual(poly.Extrema(), correctExtrema, t)
+	extremaNearlyEqual(Extrema(poly), correctExtrema, t)
 
-	max, min := poly.MaxAndMin()
+	max, min := MaxAndMin(poly)
 	floatsNearlyEqual(max, 1, t)
 	floatsNearlyEqual(min, -1, t)
 
@@ -256,8 +256,8 @@ func TestAdaptive(t *testing.T) {
 		math.Pi / 10,
 		3 * math.Pi / 10,
 	}
-	t.Log(poly.Roots())
-	floatArraysNearlyEqual(poly.Roots(), correctRoots, t)
+	t.Log(Roots(poly))
+	floatArraysNearlyEqual(Roots(poly), correctRoots, t)
 }
 
 //Benchmarks
@@ -285,7 +285,7 @@ func BenchmarkEvaluate(b *testing.B) {
 	s100 := Adaptive(sin100, -1, 1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s100.Evaluate(0.6)
+		Evaluate(s100, 0.6)
 	}
 }
 
@@ -293,7 +293,7 @@ func BenchmarkCumsum(b *testing.B) {
 	s100 := Adaptive(sin100, -1, 1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s100.Cumsum()
+		Cumsum(s100)
 	}
 }
 
@@ -301,7 +301,7 @@ func BenchmarkSum(b *testing.B) {
 	s100 := Adaptive(sin100, -1, 1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s100.Sum()
+		Sum(s100)
 	}
 }
 
@@ -309,7 +309,7 @@ func BenchmarkDiff(b *testing.B) {
 	s100 := Adaptive(sin100, -1, 1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s100.Diff()
+		Diff(s100)
 	}
 }
 
@@ -317,7 +317,7 @@ func BenchmarkRoots(b *testing.B) {
 	s100 := Adaptive(sin100, -1, 1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s100.Roots()
+		Roots(s100)
 	}
 }
 
@@ -325,7 +325,7 @@ func BenchmarkExtrema(b *testing.B) {
 	s100 := Adaptive(sin100, -1, 1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s100.Extrema()
+		Extrema(s100)
 	}
 }
 
@@ -333,6 +333,6 @@ func BenchmarkMaxAndMin(b *testing.B) {
 	s100 := Adaptive(sin100, -1, 1)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s100.MaxAndMin()
+		MaxAndMin(s100)
 	}
 }
