@@ -476,6 +476,10 @@ func (poly Chebpoly) evaluateCmplx(x complex128) complex128 {
 	return complexCoeffs[0] + x*bk1 - bk2
 }
 
+//Extremum is a local maximum or minimum of the Chebyshev approximation. The end points are considered to be extrema.
+//Point contains the x value of the extremum.
+//Value contains the value of the Chebyshev approximation at the extremum.
+//Maximum is true if the extremum is a local maximum.
 type Extremum struct {
 	Point float64
 	Value float64
@@ -489,7 +493,7 @@ func (a byPoint) Len() int           { return len(a) }
 func (a byPoint) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byPoint) Less(i, j int) bool { return a[i].Point < a[j].Point }
 
-//Extrema returns the
+//Extrema returns the local maxmima and minima of the Chebyshev approximation. The end points are considered to be extrema.
 func (poly Chebpoly) Extrema() []Extremum {
 	const realTolerance = 1e-13
 
