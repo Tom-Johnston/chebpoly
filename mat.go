@@ -133,7 +133,6 @@ func eig(mat []float64, n int) []complex128 {
 			if k < p-3 {
 				z = mat[(k+3)*n+k]
 			}
-			// printMatrix(mat, n)
 		}
 		norm := math.Sqrt(x*x + y*y)
 		if norm == 0 {
@@ -147,13 +146,11 @@ func eig(mat []float64, n int) []complex128 {
 		for k := 0; k < p; k++ {
 			mat[k*n+p-2], mat[k*n+p-1] = c*mat[k*n+p-2]-s*mat[k*n+p-1], s*mat[k*n+p-2]+c*mat[k*n+p-1]
 		}
-		// printMatrix(mat, n)
 		start := -1
 		subdivide := false
 		for i := 0; i < p-3; i++ {
 			if math.Abs(mat[(i+1)*n+i]) < eps*(math.Max(math.Abs(mat[i*n+i]), math.Abs(mat[(i+1)*n+i+1]))) {
 				//Subdivide
-				// printMatrix(mat, n)
 				subdivide = true
 				dist := i - start
 				tmp := make([]float64, dist*dist)
@@ -166,7 +163,6 @@ func eig(mat []float64, n int) []complex128 {
 			}
 		}
 		if subdivide {
-			// printMatrix(mat, n)
 			dist := p - 1 - start
 			tmp := make([]float64, dist*dist)
 			for j := range tmp {
@@ -192,13 +188,11 @@ func eig(mat []float64, n int) []complex128 {
 			mat[(p-1)*n+q-1] = 0
 			eigs = append(eigs, complex(mat[(p-1)*n+p-1], 0))
 			p--
-			q = p - 1
 			iter = 0
 		} else if math.Abs(mat[(p-2)*n+q-2]) < eps*(math.Abs(mat[(q-2)*n+(q-2)])+math.Abs(mat[(q-1)*n+(q-1)]))+eps {
 			mat[(p-2)*n+q-2] = 0
 			eigs = append(eigs, eig2x2(mat[(q-1)*n+(q-1)], mat[(q-1)*n+q], mat[q*n+q-1], mat[q*n+q])...)
 			p -= 2
-			q = p - 1
 			iter = 0
 		}
 	}
