@@ -8,25 +8,25 @@ import (
 const tol = 1e-13
 
 //The function f(x) = x on [-0.5, 2].
-var x Chebpoly = Chebpoly{coeffs: []float64{0.75, 1.25}, domainLower: -0.5, domainUpper: 2}
+var x Chebpoly = Chebpoly{Coeffs: []float64{0.75, 1.25}, DomainLower: -0.5, DomainUpper: 2}
 
 //The polynomial T_4(x) = 8x^4 - 8x^2 + 1 on the standard domain of [-1,1].
-var t4 Chebpoly = Chebpoly{coeffs: []float64{0, 0, 0, 0, 1}, domainLower: -1, domainUpper: 1}
+var t4 Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 0, 1}, DomainLower: -1, DomainUpper: 1}
 
 //The indefinite integral of the polynomial T_4(x) with the constant chosen so that it is 0 at -1.
-var t4Cumsum Chebpoly = Chebpoly{coeffs: []float64{-1.0 / 15, 0, 0, -1.0 / 6, 0, 1.0 / 10}, domainLower: -1, domainUpper: 1}
+var t4Cumsum Chebpoly = Chebpoly{Coeffs: []float64{-1.0 / 15, 0, 0, -1.0 / 6, 0, 1.0 / 10}, DomainLower: -1, DomainUpper: 1}
 
 //The polynomial
-var t4Scaled Chebpoly = Chebpoly{coeffs: []float64{0, 0, 0, 0, 1}, domainLower: 0.5, domainUpper: 2}
+var t4Scaled Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 0, 1}, DomainLower: 0.5, DomainUpper: 2}
 
-var t5 Chebpoly = Chebpoly{coeffs: []float64{0, 0, 0, 0, 0, 1}, domainLower: -1, domainUpper: 1}
+var t5 Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 0, 0, 1}, DomainLower: -1, DomainUpper: 1}
 
-var t5Scaled Chebpoly = Chebpoly{coeffs: []float64{0, 0, 0, 0, 0, 1}, domainLower: 0.5, domainUpper: 2}
-var t5ScaledCumsum Chebpoly = Chebpoly{coeffs: []float64{1.0 / 32, 0, 0, 0, -3.0 / 32, 0, 1.0 / 16}, domainLower: 0.5, domainUpper: 2}
+var t5Scaled Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 0, 0, 1}, DomainLower: 0.5, DomainUpper: 2}
+var t5ScaledCumsum Chebpoly = Chebpoly{Coeffs: []float64{1.0 / 32, 0, 0, 0, -3.0 / 32, 0, 1.0 / 16}, DomainLower: 0.5, DomainUpper: 2}
 
-var t3plust5 Chebpoly = Chebpoly{coeffs: []float64{0, 0, 0, 1, 0, 1}, domainLower: -1, domainUpper: 1}
+var t3plust5 Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 1, 0, 1}, DomainLower: -1, DomainUpper: 1}
 
-var extendedt3plust5 Chebpoly = Chebpoly{coeffs: []float64{0, 0, 0, 1, 0, 1, 0, 0, 0, 0}, domainLower: -1, domainUpper: 1}
+var extendedt3plust5 Chebpoly = Chebpoly{Coeffs: []float64{0, 0, 0, 1, 0, 1, 0, 0, 0, 0}, DomainLower: -1, DomainUpper: 1}
 
 func floatsNearlyEqual(found, expected float64, t *testing.T) {
 	t.Helper()
@@ -87,17 +87,17 @@ func extremaNearlyEqual(found, expected []Extremum, t *testing.T) {
 
 func chebpolysNearlyEqual(found, expected Chebpoly, t *testing.T) {
 	t.Helper()
-	if math.Abs(found.domainLower-expected.domainLower) > tol || math.Abs(found.domainUpper-expected.domainUpper) > tol {
-		t.Errorf("Domains don't match - Found: [%f %f] Expected: [%f %f]", found.domainLower, found.domainUpper, expected.domainLower, expected.domainUpper)
+	if math.Abs(found.DomainLower-expected.DomainLower) > tol || math.Abs(found.DomainUpper-expected.DomainUpper) > tol {
+		t.Errorf("Domains don't match - Found: [%f %f] Expected: [%f %f]", found.DomainLower, found.DomainUpper, expected.DomainLower, expected.DomainUpper)
 	}
-	if len(found.coeffs) != len(expected.coeffs) {
-		t.Errorf("Degrees don't match - Found: %d Expected: %d", len(found.coeffs)-1, len(expected.coeffs)-1)
+	if len(found.Coeffs) != len(expected.Coeffs) {
+		t.Errorf("Degrees don't match - Found: %d Expected: %d", len(found.Coeffs)-1, len(expected.Coeffs)-1)
 	}
 	maxDifference := 0.0
 	maxPosition := 0
-	for i, v := range found.coeffs {
-		if math.Abs(v-expected.coeffs[i]) > maxDifference {
-			maxDifference = math.Abs(v - expected.coeffs[i])
+	for i, v := range found.Coeffs {
+		if math.Abs(v-expected.Coeffs[i]) > maxDifference {
+			maxDifference = math.Abs(v - expected.Coeffs[i])
 			maxPosition = i
 		}
 	}
@@ -165,15 +165,15 @@ func TestDiff(t *testing.T) {
 
 func TestRoots(t *testing.T) {
 
-	poly := Chebpoly{domainLower: -1, domainUpper: 1, coeffs: []float64{2.4}}
+	poly := Chebpoly{DomainLower: -1, DomainUpper: 1, Coeffs: []float64{2.4}}
 	correctResult := []float64{}
 	floatArraysNearlyEqual(Roots(poly), correctResult, t)
 
-	poly = Chebpoly{domainLower: -1, domainUpper: 1, coeffs: []float64{0, 1}}
+	poly = Chebpoly{DomainLower: -1, DomainUpper: 1, Coeffs: []float64{0, 1}}
 	correctResult = []float64{0}
 	floatArraysNearlyEqual(Roots(poly), correctResult, t)
 
-	poly = Chebpoly{domainLower: -1, domainUpper: 1, coeffs: []float64{2, 1}}
+	poly = Chebpoly{DomainLower: -1, DomainUpper: 1, Coeffs: []float64{2, 1}}
 	correctResult = []float64{}
 	floatArraysNearlyEqual(Roots(poly), correctResult, t)
 
